@@ -1,4 +1,13 @@
-import { Ticket, ScanLog } from './types';
+import { User, Event, Ticket, ScanLog } from './types';
+import { db } from './lib/firebase';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  onSnapshot, 
+  writeBatch 
+} from 'firebase/firestore';
 
 export const INITIAL_TICKET_CODES = [
   "BGI-118139", "BGI-786392", "BGI-888388", "BGI-649172", "BGI-140249", "BGI-929692", "BGI-597686", "BGI-877123",
@@ -87,128 +96,370 @@ const DEFAULT_ATTENDEES = [
   { name: "Zoe Cox", email: "zoe.cox@example.com", type: "VIP" }
 ];
 
-export function getInitialTickets(): Ticket[] {
-  return INITIAL_TICKET_CODES.map((code, index) => {
-    // 58 tickets are fully pre-registered, 14 tickets (at the end) are unregistered to allow claim/registration flow
-    const isRegistered = index < 58;
-    const defaultData = DEFAULT_ATTENDEES[index] || { name: "", email: "", type: "General" };
+export function getInitialTickets(eventId: string): Ticket[] {
+  if (eventId === 'event_1') {
+    return INITIAL_TICKET_CODES.map((code, index) => {
+      const isRegistered = index < 58;
+      const defaultData = DEFAULT_ATTENDEES[index] || { name: "", email: "", type: "General" };
+      const isAttended = index === 5 || index === 12 || index === 28;
+      const attendedTime = isAttended ? new Date(Date.now() - (60 - index) * 60 * 1000).toISOString() : null;
 
-    // Let's make 3 tickets pre-attended to demonstrate the already scanned state
-    // Let's choose indexes 5, 12, 28
-    const isAttended = index === 5 || index === 12 || index === 28;
-    const attendedTime = isAttended ? new Date(Date.now() - (60 - index) * 60 * 1000).toISOString() : null;
-
-    return {
-      code,
-      status: isAttended ? 'Attended' : 'Unscanned',
-      attendedAt: attendedTime,
-      name: isRegistered ? defaultData.name : "",
-      email: isRegistered ? defaultData.email : "",
-      type: defaultData.type as Ticket['type'],
-      registeredAt: isRegistered ? new Date(Date.now() - 5 * 24 * 3600 * 1000 - index * 3600 * 1000).toISOString() : null,
-      notes: isRegistered ? "Pre-registered" : ""
-    };
-  });
-}
-
-const STORAGE_KEY = 'ticket_verification_system_db';
-const LOGS_STORAGE_KEY = 'ticket_verification_system_logs';
-
-export function loadTickets(): Ticket[] {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error("Failed to load tickets from localStorage", e);
+      return {
+        code,
+        status: isAttended ? 'Attended' : 'Unscanned',
+        attendedAt: attendedTime,
+        name: isRegistered ? defaultData.name : "",
+        email: isRegistered ? defaultData.email : "",
+        type: defaultData.type as Ticket['type'],
+        registeredAt: isRegistered ? new Date(Date.now() - 5 * 24 * 3600 * 1000 - index * 3600 * 1000).toISOString() : null,
+        notes: isRegistered ? "Pre-registered" : "",
+        eventId
+      };
+    });
   }
-  const initial = getInitialTickets();
-  saveTickets(initial);
-  return initial;
-}
 
-export function saveTickets(tickets: Ticket[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
-  } catch (e) {
-    console.error("Failed to save tickets to localStorage", e);
-  }
-}
+  if (eventId === 'event_2') {
+    const subsetCodes = ["FLOW-801272", "FLOW-129481", "FLOW-509218", "FLOW-301293", "FLOW-401928", "FLOW-602931", "FLOW-111100", "FLOW-222333", "FLOW-592813", "FLOW-808291", "FLOW-991203", "FLOW-776122"];
+    const subsetAttendees = [
+      { name: "Alen Turing", email: "alan.turing@expo.org", type: "VIP" },
+      { name: "Grace Hopper", email: "grace.h@expo.org", type: "VIP" },
+      { name: "Ada Lovelace", email: "ada.l@expo.org", type: "General" },
+      { name: "Tim Berners-Lee", email: "tim.bl@expo.org", type: "General" },
+      { name: "Linus Torvalds", email: "linus@expo.org", type: "Staff" },
+      { name: "Steve Wozniak", email: "woz@expo.org", type: "Press" },
+      { name: "Margaret Hamilton", email: "margaret@expo.org", type: "VIP" },
+      { name: "Ken Thompson", email: "ken@expo.org", type: "General" },
+      { name: "Dennis Ritchie", email: "dennis@expo.org", type: "General" },
+      { name: "", email: "", type: "General" },
+      { name: "", email: "", type: "General" },
+      { name: "", email: "", type: "General" },
+    ];
 
-export function loadLogs(): ScanLog[] {
-  try {
-    const data = localStorage.getItem(LOGS_STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error("Failed to load scan logs", e);
+    return subsetCodes.map((code, index) => {
+      const attendee = subsetAttendees[index];
+      const isRegistered = !!attendee.name;
+      const isAttended = index === 0 || index === 4;
+      const attendedTime = isAttended ? new Date(Date.now() - 2 * 3600 * 1000).toISOString() : null;
+
+      return {
+        code,
+        status: isAttended ? 'Attended' : 'Unscanned',
+        attendedAt: attendedTime,
+        name: attendee.name,
+        email: attendee.email,
+        type: attendee.type as Ticket['type'],
+        registeredAt: isRegistered ? new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString() : null,
+        notes: isRegistered ? "Pre-registered" : "",
+        eventId
+      };
+    });
   }
+
   return [];
 }
 
-export function saveLogs(logs: ScanLog[]): void {
-  try {
-    localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
-  } catch (e) {
-    console.error("Failed to save scan logs", e);
+const USERS_STORAGE_KEY = 'verifyflow_users';
+const EVENTS_STORAGE_KEY = 'verifyflow_events';
+const TICKETS_STORAGE_KEY = 'verifyflow_tickets_all';
+const LOGS_STORAGE_KEY = 'verifyflow_logs_all';
+
+// Helper to seed local storage default items if needed
+function seedLocalStorage() {
+  if (!localStorage.getItem(USERS_STORAGE_KEY)) {
+    const defaultUsers: User[] = [
+      { id: 'demo_user', email: 'demo@cftechlab.tech', name: 'Demo Organizer', password: 'password' }
+    ];
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(defaultUsers));
+  }
+
+  if (!localStorage.getItem(EVENTS_STORAGE_KEY)) {
+    const defaultEvents: Event[] = [
+      {
+        id: 'event_1',
+        title: 'AI Build Summit 2026',
+        date: '2026-08-15',
+        time: '09:00 AM',
+        venue: 'CF Tech Lab Auditorium, Dhaka',
+        description: 'The premier global summit bringing together AI builders, product pioneers, designers, and systems architects to demonstrate real-world integrations, multi-agent orchestrations, and production systems.',
+        organizerId: 'demo_user',
+        bannerColor: 'indigo',
+        privacy: 'public'
+      },
+      {
+        id: 'event_2',
+        title: 'VerifyFlow Global Tech Expo 2026',
+        date: '2026-11-20',
+        time: '10:00 AM',
+        venue: 'Metropolitan Convention Hall, Terminal 4',
+        description: 'Experience high-fidelity live biometric verification, advanced dynamic QR technology, custom digital asset issuance, and next-generation contactless gateway pipelines.',
+        organizerId: 'demo_user',
+        bannerColor: 'fuchsia',
+        privacy: 'public'
+      }
+    ];
+    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(defaultEvents));
+  }
+
+  if (!localStorage.getItem(TICKETS_STORAGE_KEY)) {
+    const tickets1 = getInitialTickets('event_1');
+    const tickets2 = getInitialTickets('event_2');
+    localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify([...tickets1, ...tickets2]));
+  }
+
+  if (!localStorage.getItem(LOGS_STORAGE_KEY)) {
+    const initialLogs: ScanLog[] = [
+      {
+        id: 'log_seed_1',
+        timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
+        code: 'BGI-929692',
+        result: 'Verified',
+        name: 'Ava Garcia',
+        eventId: 'event_1'
+      },
+      {
+        id: 'log_seed_2',
+        timestamp: new Date(Date.now() - 25 * 60000).toISOString(),
+        code: 'BGI-402459',
+        result: 'Verified',
+        name: 'Benjamin Gonzalez',
+        eventId: 'event_1'
+      }
+    ];
+    localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(initialLogs));
   }
 }
 
-export function clearLogs(): void {
-  localStorage.removeItem(LOGS_STORAGE_KEY);
+try {
+  seedLocalStorage();
+} catch (e) {
+  console.error("Local storage error during seeding", e);
 }
 
-export function addScanLog(code: string, result: ScanLog['result'], name?: string): ScanLog {
-  const logs = loadLogs();
+// ASYNC FIRESTORE BATCH HELPERS
+async function saveTicketsToFirestore(tickets: Ticket[]) {
+  try {
+    const chunks: Ticket[][] = [];
+    for (let i = 0; i < tickets.length; i += 200) {
+      chunks.push(tickets.slice(i, i + 200));
+    }
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach((t) => {
+        if (!t.eventId) return;
+        const ref = doc(db, 'tickets', `${t.eventId}_${t.code}`);
+        batch.set(ref, t);
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.error("Firestore write tickets batch error", err);
+  }
+}
+
+// SEED FIRESTORE FROM LOCAL IF EMPTY
+export async function seedFirestoreIfNeeded() {
+  try {
+    const eventsSnapshot = await getDocs(collection(db, 'events'));
+    if (eventsSnapshot.empty) {
+      console.log("Firestore is empty, seeding from local storage...");
+      
+      // Seed users
+      const users = loadUsers();
+      for (const u of users) {
+        await setDoc(doc(db, 'users', u.id), u);
+      }
+
+      // Seed events
+      const events = loadEvents();
+      for (const ev of events) {
+        await setDoc(doc(db, 'events', ev.id), ev);
+      }
+
+      // Seed tickets
+      const tickets = loadAllTicketsGlobal();
+      await saveTicketsToFirestore(tickets);
+
+      // Seed logs
+      try {
+        const data = localStorage.getItem(LOGS_STORAGE_KEY);
+        const logs: ScanLog[] = data ? JSON.parse(data) : [];
+        const batch = writeBatch(db);
+        logs.forEach((log) => {
+          batch.set(doc(db, 'scan_logs', log.id), log);
+        });
+        await batch.commit();
+      } catch (err) {
+        console.error("Error seeding scan logs:", err);
+      }
+      
+      console.log("Firestore database seeding finished.");
+    }
+  } catch (err) {
+    console.error("Error checking or seeding Firestore:", err);
+  }
+}
+
+// USERS MANAGEMENT
+export function loadUsers(): User[] {
+  try {
+    const data = localStorage.getItem(USERS_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveUsers(users: User[]): void {
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  users.forEach(async (u) => {
+    try {
+      await setDoc(doc(db, 'users', u.id), u);
+    } catch (err) {
+      console.error("Firestore user write error", err);
+    }
+  });
+}
+
+// EVENTS MANAGEMENT
+export function loadEvents(): Event[] {
+  try {
+    const data = localStorage.getItem(EVENTS_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveEvents(events: Event[]): void {
+  localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
+  events.forEach(async (ev) => {
+    try {
+      await setDoc(doc(db, 'events', ev.id), ev);
+    } catch (err) {
+      console.error("Firestore event write error", err);
+    }
+  });
+}
+
+export function createEvent(eventData: Omit<Event, 'id'>): Event {
+  const events = loadEvents();
+  const newEvent: Event = {
+    privacy: 'public',
+    ...eventData,
+    id: 'event_' + Math.random().toString(36).substr(2, 9)
+  };
+  events.push(newEvent);
+  saveEvents(events);
+  return newEvent;
+}
+
+// ALL TICKETS MANAGEMENT
+export function loadAllTicketsGlobal(): Ticket[] {
+  try {
+    const data = localStorage.getItem(TICKETS_STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveAllTicketsGlobal(tickets: Ticket[]): void {
+  localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(tickets));
+  saveTicketsToFirestore(tickets);
+}
+
+export function loadTicketsForEvent(eventId: string): Ticket[] {
+  const all = loadAllTicketsGlobal();
+  return all.filter(t => t.eventId === eventId);
+}
+
+export function saveTicketsForEvent(eventId: string, eventTickets: Ticket[]): void {
+  const all = loadAllTicketsGlobal();
+  const filtered = all.filter(t => t.eventId !== eventId);
+  const sanitized = eventTickets.map(t => ({ ...t, eventId }));
+  localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify([...filtered, ...sanitized]));
+  saveTicketsToFirestore(sanitized);
+}
+
+// SCAN LOGS
+export function loadLogsForEvent(eventId: string): ScanLog[] {
+  try {
+    const data = localStorage.getItem(LOGS_STORAGE_KEY);
+    const allLogs: ScanLog[] = data ? JSON.parse(data) : [];
+    return allLogs.filter(log => log.eventId === eventId);
+  } catch (e) {
+    return [];
+  }
+}
+
+export function saveLogsForEvent(eventId: string, eventLogs: ScanLog[]): void {
+  try {
+    const data = localStorage.getItem(LOGS_STORAGE_KEY);
+    const allLogs: ScanLog[] = data ? JSON.parse(data) : [];
+    const filtered = allLogs.filter(log => log.eventId !== eventId);
+    const sanitized = eventLogs.map(log => ({ ...log, eventId }));
+    localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify([...filtered, ...sanitized]));
+    
+    // Save batch to Firestore
+    const batch = writeBatch(db);
+    sanitized.forEach((log) => {
+      batch.set(doc(db, 'scan_logs', log.id), log);
+    });
+    batch.commit().catch(err => console.error("Firestore batch logs error", err));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+export function addScanLogForEvent(eventId: string, code: string, result: ScanLog['result'], name?: string): ScanLog {
+  const logs = loadLogsForEvent(eventId);
   const newLog: ScanLog = {
     id: 'log_' + Math.random().toString(36).substr(2, 9),
     timestamp: new Date().toISOString(),
     code,
     result,
-    name
+    name,
+    eventId
   };
-  logs.unshift(newLog); // Put most recent at top
-  saveLogs(logs.slice(0, 100)); // Keep last 100 logs
+  logs.unshift(newLog);
+  saveLogsForEvent(eventId, logs.slice(0, 100)); // limit last 100
   return newLog;
 }
 
-export function verifyAndScanTicket(code: string): {
+export function verifyAndScanTicketForEvent(eventId: string, code: string): {
   result: ScanLog['result'];
   ticket?: Ticket;
   message: string;
 } {
-  const tickets = loadTickets();
+  const tickets = loadTicketsForEvent(eventId);
   const trimmedCode = code.trim().toUpperCase();
   const ticketIndex = tickets.findIndex(t => t.code === trimmedCode);
 
   if (ticketIndex === -1) {
-    addScanLog(trimmedCode, 'Invalid Ticket');
+    addScanLogForEvent(eventId, trimmedCode, 'Invalid Ticket');
     return {
       result: 'Invalid Ticket',
-      message: 'Invalid Ticket: The code does not exist in our system.'
+      message: 'Invalid Ticket: The code does not exist in this event database.'
     };
   }
 
   const ticket = tickets[ticketIndex];
 
   if (ticket.status === 'Attended') {
-    addScanLog(trimmedCode, 'Already Attended', ticket.name);
+    addScanLogForEvent(eventId, trimmedCode, 'Already Attended', ticket.name);
     return {
       result: 'Already Attended',
       ticket,
-      message: `Already Attended: This ticket was scanned on ${ticket.attendedAt ? new Date(ticket.attendedAt).toLocaleTimeString() : 'unknown time'}.`
+      message: `Already Attended: ${ticket.name || 'This ticket'} was scanned on ${ticket.attendedAt ? new Date(ticket.attendedAt).toLocaleTimeString() : 'unknown time'}.`
     };
   }
 
-  // Update to Attended
   ticket.status = 'Attended';
   ticket.attendedAt = new Date().toISOString();
   tickets[ticketIndex] = ticket;
-  saveTickets(tickets);
+  saveTicketsForEvent(eventId, tickets);
 
-  addScanLog(trimmedCode, 'Verified', ticket.name);
+  addScanLogForEvent(eventId, trimmedCode, 'Verified', ticket.name);
 
   return {
     result: 'Verified',
@@ -219,35 +470,176 @@ export function verifyAndScanTicket(code: string): {
   };
 }
 
-export function registerAttendee(
+export function registerAttendeeForEvent(
+  eventId: string,
   code: string, 
   data: { name: string; email: string; type: Ticket['type']; notes?: string }
 ): Ticket {
-  const tickets = loadTickets();
+  const tickets = loadTicketsForEvent(eventId);
   const trimmedCode = code.trim().toUpperCase();
   const ticketIndex = tickets.findIndex(t => t.code === trimmedCode);
 
+  let updatedTicket: Ticket;
+
   if (ticketIndex === -1) {
-    throw new Error("Ticket code not found in database.");
+    updatedTicket = {
+      code: trimmedCode,
+      status: 'Unscanned',
+      attendedAt: null,
+      name: data.name,
+      email: data.email,
+      type: data.type,
+      notes: data.notes || "",
+      registeredAt: new Date().toISOString(),
+      eventId
+    };
+    tickets.unshift(updatedTicket);
+  } else {
+    updatedTicket = {
+      ...tickets[ticketIndex],
+      name: data.name,
+      email: data.email,
+      type: data.type,
+      notes: data.notes || "",
+      registeredAt: tickets[ticketIndex].registeredAt || new Date().toISOString()
+    };
+    tickets[ticketIndex] = updatedTicket;
   }
 
-  const updatedTicket: Ticket = {
-    ...tickets[ticketIndex],
-    name: data.name,
-    email: data.email,
-    type: data.type,
-    notes: data.notes || "",
-    registeredAt: tickets[ticketIndex].registeredAt || new Date().toISOString()
-  };
-
-  tickets[ticketIndex] = updatedTicket;
-  saveTickets(tickets);
+  saveTicketsForEvent(eventId, tickets);
   return updatedTicket;
 }
 
-export function resetDatabase(): Ticket[] {
-  const initial = getInitialTickets();
-  saveTickets(initial);
-  clearLogs();
-  return initial;
+export function resetDatabaseForEvent(eventId: string): Ticket[] {
+  const fresh = getInitialTickets(eventId);
+  saveTicketsForEvent(eventId, fresh);
+  saveLogsForEvent(eventId, []);
+  return fresh;
+}
+
+// REALTIME FIRESTORE RECONCILIATION
+export function syncFirestore(onUpdate: () => void): () => void {
+  // 1. Listen to users
+  const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const currentLocal = loadUsers();
+    let updated = false;
+    snapshot.docChanges().forEach((change) => {
+      const data = change.doc.data() as User;
+      const idx = currentLocal.findIndex(u => u.id === data.id);
+      if (change.type === 'added' || change.type === 'modified') {
+        if (idx === -1) {
+          currentLocal.push(data);
+          updated = true;
+        } else if (JSON.stringify(currentLocal[idx]) !== JSON.stringify(data)) {
+          currentLocal[idx] = data;
+          updated = true;
+        }
+      } else if (change.type === 'removed') {
+        if (idx !== -1) {
+          currentLocal.splice(idx, 1);
+          updated = true;
+        }
+      }
+    });
+    if (updated) {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentLocal));
+      onUpdate();
+    }
+  });
+
+  // 2. Listen to events
+  const unsubEvents = onSnapshot(collection(db, 'events'), (snapshot) => {
+    const currentLocal = loadEvents();
+    let updated = false;
+    snapshot.docChanges().forEach((change) => {
+      const data = change.doc.data() as Event;
+      const idx = currentLocal.findIndex(e => e.id === data.id);
+      if (change.type === 'added' || change.type === 'modified') {
+        if (idx === -1) {
+          currentLocal.push(data);
+          updated = true;
+        } else if (JSON.stringify(currentLocal[idx]) !== JSON.stringify(data)) {
+          currentLocal[idx] = data;
+          updated = true;
+        }
+      } else if (change.type === 'removed') {
+        if (idx !== -1) {
+          currentLocal.splice(idx, 1);
+          updated = true;
+        }
+      }
+    });
+    if (updated) {
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(currentLocal));
+      onUpdate();
+    }
+  });
+
+  // 3. Listen to tickets
+  const unsubTickets = onSnapshot(collection(db, 'tickets'), (snapshot) => {
+    const currentLocal = loadAllTicketsGlobal();
+    let updated = false;
+    snapshot.docChanges().forEach((change) => {
+      const data = change.doc.data() as Ticket;
+      const idx = currentLocal.findIndex(t => t.eventId === data.eventId && t.code === data.code);
+      if (change.type === 'added' || change.type === 'modified') {
+        if (idx === -1) {
+          currentLocal.push(data);
+          updated = true;
+        } else if (JSON.stringify(currentLocal[idx]) !== JSON.stringify(data)) {
+          currentLocal[idx] = data;
+          updated = true;
+        }
+      } else if (change.type === 'removed') {
+        if (idx !== -1) {
+          currentLocal.splice(idx, 1);
+          updated = true;
+        }
+      }
+    });
+    if (updated) {
+      localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(currentLocal));
+      onUpdate();
+    }
+  });
+
+  // 4. Listen to scan_logs
+  const unsubLogs = onSnapshot(collection(db, 'scan_logs'), (snapshot) => {
+    try {
+      const logData = localStorage.getItem(LOGS_STORAGE_KEY);
+      const currentLocal: ScanLog[] = logData ? JSON.parse(logData) : [];
+      let updated = false;
+      snapshot.docChanges().forEach((change) => {
+        const data = change.doc.data() as ScanLog;
+        const idx = currentLocal.findIndex(l => l.id === data.id);
+        if (change.type === 'added' || change.type === 'modified') {
+          if (idx === -1) {
+            currentLocal.push(data);
+            updated = true;
+          } else if (JSON.stringify(currentLocal[idx]) !== JSON.stringify(data)) {
+            currentLocal[idx] = data;
+            updated = true;
+          }
+        } else if (change.type === 'removed') {
+          if (idx !== -1) {
+            currentLocal.splice(idx, 1);
+            updated = true;
+          }
+        }
+      });
+      if (updated) {
+        localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(currentLocal));
+        onUpdate();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  return () => {
+    unsubUsers();
+    unsubEvents();
+    unsubTickets();
+    unsubLogs();
+  };
 }

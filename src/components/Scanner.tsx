@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import jsQR from 'jsqr';
 import { motion, AnimatePresence } from 'motion/react';
 import { Ticket, ScanLog } from '../types';
-import { verifyAndScanTicket } from '../db';
+import { verifyAndScanTicketForEvent } from '../db';
 import { playSuccessSound, playWarningSound, playErrorSound } from '../utils/audio';
 import { Camera, QrCode, Keyboard, AlertCircle, Check, X, SwitchCamera, Info } from 'lucide-react';
 
@@ -10,9 +10,10 @@ interface ScannerProps {
   onScanCompleted: (result: ScanLog['result'], ticket?: Ticket, message?: string) => void;
   unscannedTickets: Ticket[];
   attendedTickets: Ticket[];
+  eventId: string;
 }
 
-export default function Scanner({ onScanCompleted, unscannedTickets, attendedTickets }: ScannerProps) {
+export default function Scanner({ onScanCompleted, unscannedTickets, attendedTickets, eventId }: ScannerProps) {
   const [activeTab, setActiveTab] = useState<'camera' | 'manual'>('camera');
   
   // Camera State
@@ -178,7 +179,7 @@ export default function Scanner({ onScanCompleted, unscannedTickets, attendedTic
 
   // Handle Scan Verification
   const handleCodeVerification = (code: string) => {
-    const response = verifyAndScanTicket(code);
+    const response = verifyAndScanTicketForEvent(eventId, code);
     
     // Play correct synthesized sound effect
     if (response.result === 'Verified') {

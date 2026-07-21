@@ -1,8 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Ticket } from '../types';
-import { registerAttendee } from '../db';
-import { X, Check, Clock, User, Mail, ShieldAlert, Award, FileText, ToggleLeft, ArrowRight, Smartphone } from 'lucide-react';
+import { registerAttendeeForEvent, loadEvents } from '../db';
+import { X, Check, Clock, User, Mail, ShieldAlert, Award, FileText, ToggleLeft, ArrowRight, Smartphone, Download } from 'lucide-react';
 
 interface TicketDetailModalProps {
   ticket: Ticket;
@@ -10,6 +10,7 @@ interface TicketDetailModalProps {
   onSave: (updatedTicket: Ticket) => void;
   onCheckIn: (code: string) => void;
   onResetStatus: (code: string) => void;
+  eventId: string;
 }
 
 export default function TicketDetailModal({
@@ -18,6 +19,7 @@ export default function TicketDetailModal({
   onSave,
   onCheckIn,
   onResetStatus,
+  eventId,
 }: TicketDetailModalProps) {
   const [name, setName] = useState(ticket.name);
   const [email, setEmail] = useState(ticket.email);
@@ -25,6 +27,19 @@ export default function TicketDetailModal({
   const [notes, setNotes] = useState(ticket.notes || '');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [eventTitle, setEventTitle] = useState('EVENT PASS');
+
+  useEffect(() => {
+    try {
+      const evs = loadEvents();
+      const ev = evs.find(e => e.id === eventId);
+      if (ev) {
+        setEventTitle(ev.title);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [eventId]);
 
   useEffect(() => {
     setName(ticket.name);
@@ -55,7 +70,7 @@ export default function TicketDetailModal({
     }
 
     try {
-      const updated = registerAttendee(ticket.code, {
+      const updated = registerAttendeeForEvent(eventId, ticket.code, {
         name: trimmedName,
         email: trimmedEmail,
         type,
@@ -66,6 +81,25 @@ export default function TicketDetailModal({
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to update registration.');
+    }
+  };
+
+  const downloadQRCode = async () => {
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `VerifyFlow_QR_${ticket.code}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download QR code", error);
+      // Fallback
+      window.open(qrUrl, '_blank');
     }
   };
 
@@ -103,23 +137,33 @@ export default function TicketDetailModal({
             >
               {ticket.type} PASS
             </span>
-            <h4 className="text-xl font-bold font-display tracking-tight mt-1">AI BUILD SUMMIT</h4>
-            <p className="text-[10px] text-slate-400 font-mono mt-0.5">2026 EVENT PORTAL</p>
+            <h4 className="text-lg font-extrabold font-display tracking-tight mt-1 line-clamp-2 text-white">
+              {eventTitle}
+            </h4>
+            <p className="text-[10px] text-indigo-400 font-mono mt-0.5 uppercase tracking-widest font-semibold">VERIFYFLOW PORTAL</p>
           </div>
 
           {/* Live QR Code Display */}
-          <div className="my-6 flex flex-col items-center justify-center z-10">
+          <div className="my-5 flex flex-col items-center justify-center z-10">
             <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-800 hover:scale-[1.02] transition-transform duration-300">
               <img
                 src={qrUrl}
                 alt={`QR code for ${ticket.code}`}
-                className="w-40 h-40 object-contain"
+                className="w-36 h-36 object-contain"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <span className="text-[10px] text-indigo-400 font-mono font-bold tracking-widest uppercase mt-3">
+            <span className="text-[11px] text-slate-300 font-mono font-bold tracking-widest uppercase mt-2">
               {ticket.code}
             </span>
+            <button
+              type="button"
+              onClick={downloadQRCode}
+              className="mt-3 w-full max-w-[180px] py-1.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-mono text-[10px] font-bold rounded-lg border border-slate-700/50 transition-all flex items-center justify-center space-x-1.5 uppercase cursor-pointer"
+            >
+              <Download className="w-3 h-3 text-indigo-400" />
+              <span>Download QR</span>
+            </button>
           </div>
 
           {/* Ticket Footer (Attendee details) */}
