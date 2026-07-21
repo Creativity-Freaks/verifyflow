@@ -1,0 +1,10 @@
+{
+  "name": "VerifyFlow",
+  "description": "Premium multi-purpose ticket verification and registration system. Upload custom CSV attendee databases, issue instant tickets, and scan passes in real time.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
