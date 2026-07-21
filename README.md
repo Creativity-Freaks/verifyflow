@@ -1,124 +1,94 @@
-# BGI Event Ticket Scanner & Registrant Database System
+# 🎫 VerifyFlow - Real-Time Ticket Scanner, Event Organizer & Registrant Platform
 
-An advanced, real-time ticket scanning, validation, and attendee registration system built for smooth event coordination. Designed with a highly polished, interactive futuristic cyber-slate dashboard theme, it operates 100% offline-capable and supports live QR camera scanning, manual backups, attendee credential creation, and instant reporting exports.
+A modern, real-time ticket scanning, validation, organizer management, and attendee registration system built for event organizers, summits, and expos. 
 
----
-
-## 🛠️ Technology Stack Breakdown
-
-This application is built with a premium, robust frontend stack and optimized client-side state engines:
-
-### 1. Frontend Architecture
-* **React 19**: Powered by functional components, custom hooks, and dynamic hydration contexts.
-* **Vite**: Ultra-fast bundler for modern asset rendering and fast local development.
-* **Tailwind CSS v4**: Implements custom design grids, responsive layout behaviors (`sm:`, `md:`, `lg:`), and custom-themed dark elements.
-* **Framer Motion**: Delivers smooth fluid motion layout changes, alerts, and feedback transition effects.
-* **jsQR**: Instant WebRTC client-side QR code decoding and processing directly from device cameras.
-* **Lucide React**: Premium, consistent modern system vector icons.
-
-### 2. Backend & System Runtime
-* **Node.js**: The reliable development environment running with native ECMAScript Modules (`type: "module"`).
-* **Express**: Serves production-ready assets and routes correctly under standard configurations.
-
-### 3. Database & Local Persistence
-* **Offline-Persistent database Engine (`src/db.ts`)**:
-  * Utilizes robust custom browser **`localStorage`** wrappers to fully persist all registrant records, status logs, and ticket check-ins.
-  * Hydrated and pre-seeded automatically with **72 initial registrants** representing various pass categories (General, VIP, Staff, Press).
-  * Remembers and persists real-time check-in timestamps, status logs, and new registrations across server restarts or page refreshes.
+Features real-time **Firebase Firestore synchronization**, offline fallback capabilities, live camera QR scanning, manual code check-in, custom organizer logo uploads, custom event banner picture uploads, and instant CSV exports.
 
 ---
 
-## 🚀 Core Features
+## 🛠️ Tech Stack & Architecture
 
-1. **Dual Mode Scanner**:
-   * **Live Video Scan**: Real-time camera feed analysis for instant digital check-ins.
-   * **Manual Input Console**: Fast alphanumeric fallback codes (`BGI-XXXXXX`) with immediate visual checks.
-2. **Interactive Recent Activity Log**:
-   * Displays check-in attempts (successful check-ins, warning-level duplicate attempts, and error-level invalid codes) with precise timestamps.
-3. **Advanced Registrant Database**:
-   * Multi-column filters for Ticket Type (VIP, General, Staff, Press) and Check-In Status.
-   * Smart sorting options (by Ticket Code, Registration Date, or Check-In Timestamp).
-   * **Custom 10-Item Pagination**: Limits table length automatically, ensuring high-density layout comfort on both desktop and mobile screens.
-4. **Instant CSV Exporter**:
-   * One-click download containing all currently filtered and sorted attendee registration statuses for external analytics.
-5. **Interactive Ticket Console**:
-   * Easy-to-use modals to issue brand new ticket passes on the fly or inspect active attendee details.
-6. **Smart Audio alerts System**:
-   * Synthesized sound triggers with distinct auditory frequencies (success chime, warning hum, error buzzer) for busy operators.
+- **Frontend**: React 19, Vite, Tailwind CSS v4, Framer Motion, Lucide Icons, jsQR.
+- **Backend & Database**: Firebase Firestore (Real-time live multi-device syncing across devices) with browser `localStorage` instant fallback caching.
+- **Image Processing**: Client-side canvas compression for organizer logos and event cover photos before database storage.
+- **Deployment**: Optimized for **Vercel**, Cloud Run, and GitHub Pages.
 
 ---
 
-## 📱 Mobile-First Responsive Design & PWA
+## ✨ Key Features
 
-* **PWA Capability**: This application is pre-configured with a Progressive Web App manifest (`public/manifest.json`). When hosted on HTTPS, operators can simply open the link on Android or iOS, click **"Add to Home Screen"**, and run it as an installed app. It will open in standalone full-screen mode without browser UI, support fast offline-hydration, and maintain native device aesthetics.
-* **Fluid Adaptive Grids**: The scanning station and activity log lay out side-by-side on desktop displays and collapse into touch-friendly stacks on smartphone viewports.
-* **Robust Touch Targets**: Buttons and filters feature spacious hit zones (at least `44px`) to ensure error-free operation under high-traffic check-in environments.
-* **Horizontal Scroll Wrappers**: Registrant databases are protected in strict scroll containers to keep device viewports perfectly aligned.
-* **Visual Density Limits**: Clean paginated states prevent infinitely long lists on smaller mobile browsers.
-
----
-
-## 📦 How to Build a Native Android APK
-
-If you want to build a native Android `.apk` package to distribute to physical mobile scanners, you can easily wrap this Vite app using **Capacitor** (by Ionic):
-
-### 1. Build the production web assets
-```bash
-npm run build
-```
-This will compile the single-page application inside the `dist/` folder.
-
-### 2. Add Capacitor to your project
-```bash
-npm install @capacitor/core @capacitor/cli
-```
-
-### 3. Initialize Capacitor
-```bash
-npx cap init "BGI Gateway" "com.cftechlab.bgigateway" --web-dir=dist
-```
-
-### 4. Install and add the Android platform
-```bash
-npm install @capacitor/android
-npx cap add android
-```
-
-### 5. Sync the compiled assets to the Android folder
-```bash
-npx cap sync
-```
-
-### 6. Build the APK inside Android Studio
-```bash
-npx cap open android
-```
-This opens the project in Android Studio. Simply go to **Build** > **Build Bundle(s) / APK(s)** > **Build APK(s)**. Your native installer `.apk` is ready for your mobile device!
+1. **Firebase Real-Time Multi-Device Sync**:
+   - Organizers can scan tickets simultaneously on multiple phones or devices; check-in status updates instantly across all connected screens via Firestore listeners.
+2. **Organizer Profile & Logo Upload**:
+   - Register organizer accounts with custom company name, password, and custom logo image upload.
+3. **Event Management & Custom Banner Pictures**:
+   - Create public or private events with custom title, date, venue, description, theme accent color, and custom cover photo / banner picture uploads.
+4. **Dual-Mode High Speed Ticket Verification**:
+   - **Live Camera Scanner**: Instant WebRTC camera feed decoding.
+   - **Manual Code Input**: High-speed backup input with instant sound alerts (Success, Warning, Error).
+5. **Attendee Registration & Badge Issuance**:
+   - Public landing page where attendees can discover public events and register for pass categories (VIP, General, Staff, Press).
+6. **Filtered Database & CSV Export**:
+   - Search, filter by pass type or check-in status, paginate, and export reports to CSV.
 
 ---
 
-## 💻 How to Run Locally
+## 💻 How to Run Locally on Your Laptop
 
 ### Prerequisites
-Make sure you have Node.js (v18+) and npm installed on your system.
+- Install **Node.js** (v18 or higher) and **npm** on your computer.
 
-### Installation
+### Step 1: Clone the Repository
 ```bash
-# Install dependencies
-npm install
-
-# Boot development server
-npm run dev
+git clone <your-github-repo-url>
+cd <repo-folder-name>
 ```
 
-The application will run locally on your browser.
+### Step 2: Install Dependencies
+```bash
+npm install
+```
+
+### Step 3: Start Development Server
+```bash
+npm run dev
+```
+Open your browser and navigate to `http://localhost:3000` (or the URL shown in your terminal).
 
 ---
 
-## 📤 Push and Sync to GitHub
+## 🚀 How to Deploy to Vercel
 
-To publish this project to your own GitHub profile:
-1. Open the **AI Studio Settings / Project Menu** at the top corner of the screen.
-2. Select the **Export / Connect to GitHub** option.
-3. Authenticate with your GitHub account and authorize the export.
-4. Select or create a repository (e.g., `bgi-ticket-scanner`), and AI Studio will instantly push the entire workspace to your repository.
+Deploying to Vercel takes less than 2 minutes and is completely free:
+
+### Option A: Via GitHub (Recommended)
+1. Push your code to your GitHub repository.
+2. Go to [Vercel Dashboard](https://vercel.com/) and click **"Add New"** > **"Project"**.
+3. Import your GitHub repository.
+4. Vercel will automatically detect **Vite**:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. Click **Deploy**. Vercel will build and deploy your live HTTPS link!
+
+### Option B: Via Vercel CLI
+```bash
+# Install Vercel CLI globally
+npm install -g vercel
+
+# Deploy directly from terminal
+vercel
+```
+
+---
+
+## 📱 Building Mobile Apps (Android APK & iOS)
+
+A complete step-by-step guide on how to convert this web app into native Android (`.apk`) and iOS apps using Capacitor or PWA is available in the dedicated documentation file:
+
+👉 **Read [MOBILE_APP_GUIDE.md](./MOBILE_APP_GUIDE.md)** for Android Studio setup, camera permissions, and APK build commands.
+
+---
+
+## 📄 License
+MIT License. Built for seamless event operations and ticket verification.
